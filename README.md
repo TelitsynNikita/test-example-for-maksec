@@ -58,11 +58,11 @@
 | Слой | Описание |
 |------|----------|
 | **API (Handler)** | HTTP-обработчики, валидация запросов, формирование ответов |
-| **Service** | Бизнес-логика: создание скриптов, обработка событий |
+| **Service** | Бизнес-логика: создание скриптов, обработка событий, установка агента |
 | **Repository** | Интерфейсы для работы с БД, абстракция над хранилищем |
 | **PostgreSQL** | Реализация репозиториев для PostgreSQL |
-| **SSH Client** | Клиент для удаленного выполнения команд |
-| **Domain** | Бизнес-сущности (Script, Event) |
+| **SSH Client** | Клиент для удаленного выполнения команд с retry и bulkhead |
+| **Domain** | Бизнес-сущности (Script, Event, Templates) |
 
 ## Технологии
 
@@ -76,6 +76,14 @@
 | Валидация | go-playground/validator | v10 |
 | Тестирование | testify | v1.10 |
 | Контейнеризация | Docker / Docker Compose | — |
+| Документация | Swagger/OpenAPI | — |
+
+## Требования
+
+- Go 1.26.5+
+- PostgreSQL 15+
+- Docker / Docker Compose (опционально)
+- Make (опционально)
 
 ## Быстрый старт
 
@@ -124,7 +132,6 @@ make test-unit     # Запустить unit-тесты
 make migrate-up    # Применить миграции
 make migrate-down  # Откатить миграцию
 make migrate-version # Показать текущую версию
-make migrate-create NAME=create_table # Создать новую миграцию
 
 # Docker
 make docker-build  # Собрать Docker образ
@@ -134,7 +141,6 @@ make docker-dev    # Запустить в режиме разработки
 
 # Другое
 make swagger       # Сгенерировать Swagger документацию
-make lint          # Запустить линтер
 ```
 
 ## API Endpoints
@@ -143,7 +149,7 @@ make lint          # Запустить линтер
 
 **POST** `/create`
 
-Создает bash-скрипт на удаленном хосте.
+Создает bash-скрипт на удаленном хосте и устанавливает агент мониторинга.
 
 **Запрос:**
 
@@ -161,7 +167,7 @@ make lint          # Запустить линтер
 |------|-----|-------------|----------|
 | host | string | ✅ | IP-адрес или hostname удаленного хоста |
 | user | string | ✅ | Имя пользователя для SSH |
-| password | string | ✅ | Пароль для SSH (мин. 8 символов) |
+| password | string | ✅ | Пароль для SSH |
 | template | string | ✅ | Имя шаблона (template1, template2) |
 | port | int | ❌ | SSH порт (по умолчанию 22) |
 
@@ -195,7 +201,7 @@ make lint          # Запустить линтер
 {
   "user": "root",
   "script": "/opt/script-monitor/scripts/123e4567-e89b-12d3-a456-426614174000.sh",
-  "action": "execute",
+  "action": "open",
   "time": "2026-08-13T00:00:00Z"
 }
 ```
@@ -227,7 +233,7 @@ Authorization: Bearer <CALLBACK_TOKEN>
 
 **GET** `/health`
 
-Проверка статуса сервиса.
+Проверка статуса сервиса. Доступен на обоих портах (8080 и 8081).
 
 **Ответ (200 OK):**
 
@@ -242,6 +248,15 @@ Authorization: Bearer <CALLBACK_TOKEN>
 **GET** `/swagger/index.html`
 
 Интерактивная документация API.
+
+## Мониторинг и агент
+
+При создании скрипта на удаленный хост автоматически устанавливается агент мониторинга:
+
+1. **Агент устанавливается** в `/opt/script-monitor/agent/agent.sh`
+2. **Настраивается auditd** для отслеживания событий в директории скриптов
+3. **Отслеживаются события** `open` и `execute`
+4. **Отправляются callback** на сервер при обнаружении событий
 
 ## Тестирование
 
@@ -302,15 +317,17 @@ make docker-dev
 | **Валидация** | Проверка всех входных данных через validator-v10 |
 | **DisallowUnknownFields** | Запрет неизвестных полей в JSON |
 | **Bulkhead** | Ограничение параллельных SSH подключений (20) |
-| **Таймауты** | ReadTimeout 5s, WriteTimeout 10s, SSH Timeout 2s |
+| **Таймауты** | ReadTimeout 5s, WriteTimeout 10s, SSH Timeout 30s |
 | **Bearer Token** | Аутентификация callback эндпоинта |
 | **Retry** | Экспоненциальная задержка при ошибках SSH |
+| **SSH Known Hosts** | Поддержка проверки host ключей через known_hosts |
 
 ### SSH безопасность
 
 - Пароли передаются по запросу, не хранятся в БД
 - Поля экранируются перед передачей в shell
 - Компенсирующие операции при ошибках
+- Поддержка strict host key checking
 
 ## Структура проекта
 
@@ -318,7 +335,7 @@ make docker-dev
 test-example-for-maksec/
 ├── cmd/
 │   └── server/
-│       └── main.go                 # Точка входа
+│       └── main.go                 # Точка входа с Swagger аннотациями
 ├── internal/
 │   ├── api/
 │   │   ├── handler/                # HTTP обработчики
@@ -341,9 +358,10 @@ test-example-for-maksec/
 │   │   ├── script.go
 │   │   ├── template.go
 │   │   └── scripts/
-│   │       └── templates/          # Шаблоны скриптов (embed)
-│   │           ├── template1.sh
-│   │           └── template2.sh
+│   │       ├── templates/          # Шаблоны скриптов (embed)
+│   │       │   ├── template1.sh
+│   │       │   └── template2.sh
+│   │       └── agent.sh            # Агент мониторинга (embed)
 │   ├── repository/                 # Репозитории
 │   │   ├── postgres/               # PostgreSQL реализация
 │   │   │   ├── db.go
@@ -366,11 +384,11 @@ test-example-for-maksec/
 │   ├── 20260813120500_create_events_table.up.sql
 │   └── 20260813120500_create_events_table.down.sql
 ├── test/
-│   ├── unit/                       # Unit-тесты
+│   └── unit/                       # Unit-тесты
+│       ├── domain/
+│       ├── middleware/
 │       ├── service/
-│       │   ├── script_service_test.go
-│       │   └── event_service_test.go
-│       └── domain/
+│       └── ssh/
 ├── docs/                           # Swagger документация
 ├── .env.example                    # Пример конфигурации
 ├── .dockerignore
@@ -403,12 +421,19 @@ DB_SSLMODE=disable              # SSL режим
 DB_MAX_CONN=10                  # Максимум соединений
 
 # SSH Configuration
-SSH_TIMEOUT=2s                  # Таймаут SSH команд
+SSH_TIMEOUT=30s                 # Таймаут SSH команд
 SSH_PORT=22                     # SSH порт
+SSH_STRICT_HOST_KEY_CHECKING=false # Проверка host ключей
+SSH_KNOWN_HOSTS=                # Путь к known_hosts файлу
 
 # Callback Security
 CALLBACK_TOKEN=secret           # Токен для callback аутентификации
 
+# Agent Configuration (used on remote host)
+AGENT_CALLBACK_URL=http://localhost:8081/callback
+AGENT_CALLBACK_TOKEN=secret
+
 # Logging
 LOG_LEVEL=info                  # Уровень логирования (debug/info/warn/error)
 LOG_FORMAT=json                 # Формат (json/text)
+```

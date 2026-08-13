@@ -29,7 +29,6 @@ func New(services *service.Services, cfg *config.Config, logger *slog.Logger) *S
 	createMux := http.NewServeMux()
 	createMux.HandleFunc("POST /create", createHandler.Handle)
 	createMux.HandleFunc("GET /health", healthHandler.Handle)
-	createMux.HandleFunc("GET /health/ready", healthHandler.Handle)
 
 	createMux.HandleFunc("GET /swagger/", httpSwagger.WrapHandler)
 
@@ -37,6 +36,7 @@ func New(services *service.Services, cfg *config.Config, logger *slog.Logger) *S
 	callbackMux.Handle("POST /callback", middleware.Auth(cfg.Callback.Token)(
 		http.HandlerFunc(callbackHandler.Handle),
 	))
+	callbackMux.HandleFunc("GET /health", healthHandler.Handle)
 
 	middlewareChain := middleware.Chain(
 		middleware.MaxBodySize(1024*1024),

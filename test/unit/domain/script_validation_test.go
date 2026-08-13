@@ -28,6 +28,28 @@ func TestCreateScriptRequest_Validation(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "valid request with short password (2 chars)",
+			req: domain.CreateScriptRequest{
+				Host:     "127.0.0.1",
+				User:     "root",
+				Password: "ab",
+				Template: "template1",
+				Port:     22,
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid request with single char password",
+			req: domain.CreateScriptRequest{
+				Host:     "127.0.0.1",
+				User:     "root",
+				Password: "a",
+				Template: "template1",
+				Port:     22,
+			},
+			wantErr: false,
+		},
+		{
 			name: "valid hostname",
 			req: domain.CreateScriptRequest{
 				Host:     "example.com",
@@ -72,11 +94,11 @@ func TestCreateScriptRequest_Validation(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "password too short (min 8)",
+			name: "empty password",
 			req: domain.CreateScriptRequest{
 				Host:     "127.0.0.1",
 				User:     "root",
-				Password: "123",
+				Password: "",
 				Template: "template1",
 				Port:     22,
 			},
@@ -182,7 +204,7 @@ func TestCallbackRequest_Validation(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "valid request",
+			name: "valid request execute",
 			req: domain.CallbackRequest{
 				User:       "root",
 				ScriptPath: "/opt/script-monitor/scripts/test.sh",
@@ -192,11 +214,11 @@ func TestCallbackRequest_Validation(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "valid action modify",
+			name: "valid request open",
 			req: domain.CallbackRequest{
 				User:       "root",
 				ScriptPath: "/opt/script-monitor/scripts/test.sh",
-				Action:     "modify",
+				Action:     "open",
 				Time:       "2026-08-13T08:09:36Z",
 			},
 			wantErr: false,
@@ -237,6 +259,16 @@ func TestCallbackRequest_Validation(t *testing.T) {
 				User:       "root",
 				ScriptPath: string(make([]byte, 5000)),
 				Action:     "execute",
+				Time:       "2026-08-13T08:09:36Z",
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid action (modify not allowed)",
+			req: domain.CallbackRequest{
+				User:       "root",
+				ScriptPath: "/opt/script-monitor/scripts/test.sh",
+				Action:     "modify",
 				Time:       "2026-08-13T08:09:36Z",
 			},
 			wantErr: true,

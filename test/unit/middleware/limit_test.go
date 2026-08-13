@@ -12,7 +12,6 @@ import (
 )
 
 func TestMaxBodySize(t *testing.T) {
-	// Тестовый хендлер
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -23,7 +22,6 @@ func TestMaxBodySize(t *testing.T) {
 		w.Write(body)
 	})
 
-	// Применяем middleware с лимитом 100 байт
 	handler := middleware.MaxBodySize(100)(next)
 
 	tests := []struct {
@@ -44,7 +42,7 @@ func TestMaxBodySize(t *testing.T) {
 		{
 			name:       "body exceeds limit",
 			bodySize:   200,
-			wantStatus: http.StatusBadRequest, // MaxBytesReader возвращает 400
+			wantStatus: http.StatusBadRequest,
 		},
 	}
 
@@ -63,11 +61,9 @@ func TestMaxBodySize(t *testing.T) {
 }
 
 func TestMaxBodySize_WithCustomErrorHandler(t *testing.T) {
-	// Тестовый хендлер с кастомной обработкой ошибки
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, err := io.ReadAll(r.Body)
 		if err != nil {
-			// Если ошибка - возвращаем 413
 			http.Error(w, "Request body too large", http.StatusRequestEntityTooLarge)
 			return
 		}
@@ -91,7 +87,7 @@ func TestRateLimit(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	handler := middleware.RateLimit(1, 2)(next) // 1 req/sec, burst 2
+	handler := middleware.RateLimit(1, 2)(next)
 
 	req := httptest.NewRequest("GET", "/test", nil)
 

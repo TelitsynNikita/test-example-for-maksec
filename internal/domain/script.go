@@ -19,7 +19,7 @@ type Script struct {
 type CreateScriptRequest struct {
 	Host     string `json:"host" validate:"required,hostname|ip,min=1,max=255"`
 	User     string `json:"user" validate:"required,min=1,max=100"`
-	Password string `json:"password" validate:"required,min=8,max=128"`
+	Password string `json:"password" validate:"required,min=1,max=128"`
 	Template string `json:"template" validate:"required,min=1,max=50"`
 	Port     int    `json:"port" validate:"min=1,max=65535"`
 }

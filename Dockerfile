@@ -20,6 +20,8 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o /app/bin/
 # Stage 2: Runtime
 FROM alpine:3.19 AS runner
 
+RUN apk add --no-cache ca-certificates tzdata postgresql-client
+
 # Устанавливаем ca-certificates для HTTPS и tzdata для временных зон
 RUN apk add --no-cache ca-certificates tzdata
 

@@ -11,6 +11,9 @@ var template1Content string
 //go:embed scripts/templates/template2.sh
 var template2Content string
 
+//go:embed scripts/agent.sh
+var agentScript string
+
 type ScriptTemplate struct {
 	Name        string
 	Description string
@@ -30,4 +33,8 @@ func GetTemplates() map[string]ScriptTemplate {
 			Content:     strings.TrimSpace(template2Content),
 		},
 	}
+}
+
+func GetAgentScript() string {
+	return strings.TrimSpace(agentScript)
 }

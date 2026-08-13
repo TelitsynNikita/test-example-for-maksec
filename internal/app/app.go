@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"log/slog"
 	"os"
@@ -14,6 +15,10 @@ import (
 	"github.com/TelitsynNikita/test-example-for-maksec/internal/server"
 	"github.com/TelitsynNikita/test-example-for-maksec/internal/service"
 	"github.com/TelitsynNikita/test-example-for-maksec/internal/ssh"
+
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
 type App struct {
@@ -25,6 +30,11 @@ type App struct {
 func New() *App {
 	cfg, logger := initConfigAndLogger()
 	db := initDatabase(cfg, logger)
+
+	if err := runMigrations(cfg, logger); err != nil {
+		logger.Error("failed to run migrations", "error", err)
+		os.Exit(1)
+	}
 
 	repos := initRepositories(db)
 	services := initServices(repos, cfg)
@@ -53,6 +63,40 @@ func (a *App) shutdown() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	a.Server.Shutdown(ctx, a.Logger)
+}
+
+func runMigrations(cfg *config.Config, logger *slog.Logger) error {
+	logger.Info("running database migrations...")
+
+	dsn := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s",
+		cfg.Database.User,
+		cfg.Database.Password,
+		cfg.Database.Host,
+		cfg.Database.Port,
+		cfg.Database.DBName,
+		cfg.Database.SSLMode,
+	)
+
+	m, err := migrate.New(
+		"file://migrations",
+		dsn,
+	)
+	if err != nil {
+		return err
+	}
+	defer m.Close()
+
+	_, _, err = m.Version()
+	if err != nil && err != migrate.ErrNilVersion {
+		return err
+	}
+
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		return err
+	}
+
+	logger.Info("migrations applied successfully")
+	return nil
 }
 
 func initConfigAndLogger() (*config.Config, *slog.Logger) {
@@ -97,7 +141,11 @@ func initRepositories(db *postgres.DB) *Repositories {
 }
 
 func initServices(repos *Repositories, cfg *config.Config) *service.Services {
-	sshClient := ssh.NewClient(cfg.SSH.Timeout)
+	sshClient := ssh.NewClient(ssh.Config{
+		Timeout:               cfg.SSH.Timeout,
+		StrictHostKeyChecking: cfg.SSH.StrictHostKeyChecking,
+		KnownHostsFile:        cfg.SSH.KnownHostsFile,
+	})
 
 	return &service.Services{
 		ScriptService: service.NewScriptService(repos.ScriptRepo, sshClient),

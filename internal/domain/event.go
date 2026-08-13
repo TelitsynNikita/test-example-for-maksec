@@ -19,7 +19,7 @@ type Event struct {
 type CallbackRequest struct {
 	User       string `json:"user" validate:"required,min=1,max=100"`
 	ScriptPath string `json:"script" validate:"required,min=1,max=4096"`
-	Action     string `json:"action" validate:"required,oneof=execute modify"`
+	Action     string `json:"action" validate:"required,oneof=open execute"`
 	Time       string `json:"time" validate:"required,datetime=2006-01-02T15:04:05Z07:00"`
 }
 

@@ -196,8 +196,8 @@ const docTemplate = `{
                 "action": {
                     "type": "string",
                     "enum": [
-                        "execute",
-                        "modify"
+                        "open",
+                        "execute"
                     ]
                 },
                 "script": {
@@ -243,7 +243,7 @@ const docTemplate = `{
                 "password": {
                     "type": "string",
                     "maxLength": 128,
-                    "minLength": 8
+                    "minLength": 1
                 },
                 "port": {
                     "type": "integer",

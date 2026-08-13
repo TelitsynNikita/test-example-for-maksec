@@ -20,7 +20,7 @@ func (m *MockEventRepository) Create(ctx context.Context, event *domain.Event) e
 	return args.Error(0)
 }
 
-func TestEventService_ProcessCallback_Success(t *testing.T) {
+func TestEventService_ProcessCallback_Success_Execute(t *testing.T) {
 	mockEventRepo := new(MockEventRepository)
 	mockScriptRepo := new(MockScriptRepository)
 
@@ -38,6 +38,37 @@ func TestEventService_ProcessCallback_Success(t *testing.T) {
 		User:       "root",
 		ScriptPath: scriptPath,
 		Action:     "execute",
+		Time:       "2026-08-13T08:09:36Z",
+	}
+
+	mockScriptRepo.On("GetByPath", mock.Anything, scriptPath).Return(script, nil)
+	mockEventRepo.On("Create", mock.Anything, mock.Anything).Return(nil)
+
+	err := svc.ProcessCallback(context.Background(), req)
+
+	assert.NoError(t, err)
+	mockScriptRepo.AssertExpectations(t)
+	mockEventRepo.AssertExpectations(t)
+}
+
+func TestEventService_ProcessCallback_Success_Open(t *testing.T) {
+	mockEventRepo := new(MockEventRepository)
+	mockScriptRepo := new(MockScriptRepository)
+
+	svc := service.NewEventService(mockEventRepo, mockScriptRepo)
+
+	scriptID := uuid.New()
+	scriptPath := "/opt/script-monitor/scripts/test.sh"
+
+	script := &domain.Script{
+		ID:   scriptID,
+		Path: scriptPath,
+	}
+
+	req := domain.CallbackRequest{
+		User:       "root",
+		ScriptPath: scriptPath,
+		Action:     "open",
 		Time:       "2026-08-13T08:09:36Z",
 	}
 
@@ -99,4 +130,32 @@ func TestEventService_ProcessCallback_InvalidTime(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "parsing time")
+}
+
+func TestEventService_ProcessCallback_InvalidAction(t *testing.T) {
+	mockEventRepo := new(MockEventRepository)
+	mockScriptRepo := new(MockScriptRepository)
+
+	svc := service.NewEventService(mockEventRepo, mockScriptRepo)
+
+	scriptID := uuid.New()
+	scriptPath := "/opt/script-monitor/scripts/test.sh"
+
+	script := &domain.Script{
+		ID:   scriptID,
+		Path: scriptPath,
+	}
+
+	req := domain.CallbackRequest{
+		User:       "root",
+		ScriptPath: scriptPath,
+		Action:     "modify",
+		Time:       "2026-08-13T08:09:36Z",
+	}
+
+	mockScriptRepo.On("GetByPath", mock.Anything, scriptPath).Return(script, nil)
+
+	err := svc.ProcessCallback(context.Background(), req)
+
+	assert.Error(t, err)
 }
