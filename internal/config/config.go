@@ -17,25 +17,25 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	CreatePort   int           `envconfig:"SERVER_CREATE_PORT" default:"8080"`
-	CallbackPort int           `envconfig:"SERVER_CALLBACK_PORT" default:"8081"`
-	ReadTimeout  time.Duration `envconfig:"SERVER_READ_TIMEOUT" default:"10s"`
-	WriteTimeout time.Duration `envconfig:"SERVER_WRITE_TIMEOUT" default:"10s"`
+	CreatePort   int           `envconfig:"SERVER_CREATE_PORT"`
+	CallbackPort int           `envconfig:"SERVER_CALLBACK_PORT"`
+	ReadTimeout  time.Duration `envconfig:"SERVER_READ_TIMEOUT"`
+	WriteTimeout time.Duration `envconfig:"SERVER_WRITE_TIMEOUT"`
 }
 
 type DatabaseConfig struct {
-	Host     string `envconfig:"DB_HOST" default:"localhost"`
-	Port     int    `envconfig:"DB_PORT" default:"5432"`
-	User     string `envconfig:"DB_USER" default:"postgres"`
-	Password string `envconfig:"DB_PASSWORD" required:"true"`
-	DBName   string `envconfig:"DB_NAME" default:"script_monitor"`
-	SSLMode  string `envconfig:"DB_SSLMODE" default:"disable"`
-	MaxConn  int    `envconfig:"DB_MAX_CONN" default:"10"`
+	Host     string `envconfig:"DB_HOST"`
+	Port     int    `envconfig:"DB_PORT"`
+	User     string `envconfig:"DB_USER"`
+	Password string `envconfig:"DB_PASSWORD"`
+	DBName   string `envconfig:"DB_NAME"`
+	SSLMode  string `envconfig:"DB_SSLMODE"`
+	MaxConn  int    `envconfig:"DB_MAX_CONN"`
 }
 
 type SSHConfig struct {
-	Timeout time.Duration `envconfig:"SSH_TIMEOUT" default:"30s"`
-	Port    int           `envconfig:"SSH_PORT" default:"22"`
+	Timeout time.Duration `envconfig:"SSH_TIMEOUT"`
+	Port    int           `envconfig:"SSH_PORT"`
 }
 
 type CallbackConfig struct {
@@ -43,8 +43,8 @@ type CallbackConfig struct {
 }
 
 type LogConfig struct {
-	Level  string `envconfig:"LOG_LEVEL" default:"info"`
-	Format string `envconfig:"LOG_FORMAT" default:"json"`
+	Level  string `envconfig:"LOG_LEVEL"`
+	Format string `envconfig:"LOG_FORMAT"`
 }
 
 func Load() (*Config, error) {

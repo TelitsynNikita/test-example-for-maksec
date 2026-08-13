@@ -1,0 +1,192 @@
+basePath: /
+definitions:
+  domain.CallbackRequest:
+    properties:
+      action:
+        enum:
+        - execute
+        - modify
+        type: string
+      script:
+        maxLength: 4096
+        minLength: 1
+        type: string
+      time:
+        type: string
+      user:
+        maxLength: 100
+        minLength: 1
+        type: string
+    required:
+    - action
+    - script
+    - time
+    - user
+    type: object
+  domain.CallbackResponse:
+    properties:
+      message:
+        type: string
+      status:
+        type: string
+    type: object
+  domain.CreateScriptRequest:
+    properties:
+      host:
+        maxLength: 255
+        minLength: 1
+        type: string
+      password:
+        maxLength: 128
+        minLength: 8
+        type: string
+      port:
+        maximum: 65535
+        minimum: 1
+        type: integer
+      template:
+        maxLength: 50
+        minLength: 1
+        type: string
+      user:
+        maxLength: 100
+        minLength: 1
+        type: string
+    required:
+    - host
+    - password
+    - template
+    - user
+    type: object
+  domain.CreateScriptResponse:
+    properties:
+      created_at:
+        type: string
+      script_id:
+        type: string
+      script_path:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@script-monitor.io
+    name: API Support
+  description: Service for remote script management via SSH
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: Script Monitor API
+  version: "1.0"
+paths:
+  /callback:
+    post:
+      consumes:
+      - application/json
+      description: Receives execution events from monitoring agent
+      parameters:
+      - description: Callback request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/domain.CallbackRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.CallbackResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Receive callback from agent
+      tags:
+      - callbacks
+  /create:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new bash script on a remote host via SSH
+      parameters:
+      - description: Create script request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/domain.CreateScriptRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.CreateScriptResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new script
+      tags:
+      - scripts
+  /health:
+    get:
+      description: Returns service health status
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Health check
+      tags:
+      - health
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and the token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/TelitsynNikita/test-example-for-maksec/internal/domain"
 	"github.com/TelitsynNikita/test-example-for-maksec/internal/repository"
@@ -46,27 +45,30 @@ func (s *ScriptService) CreateScript(ctx context.Context, req domain.CreateScrip
 		return nil, domain.ErrScriptAlreadyExists
 	}
 
-	sshPort := 22
+	sshPort := req.Port
+	if sshPort == 0 {
+		sshPort = 22
+	}
+
 	createDirCmd := "mkdir -p /opt/script-monitor/scripts"
-	if _, err := s.sshClient.RunCommand(ctx, req.Host, sshPort, createDirCmd); err != nil {
+	if _, err := s.sshClient.RunCommand(ctx, req.Host, sshPort, req.User, req.Password, createDirCmd); err != nil {
 		return nil, fmt.Errorf("failed to create remote directory: %w", err)
 	}
 
-	escapedContent := strings.ReplaceAll(templateContent, "'", "'\\''")
-	uploadCmd := fmt.Sprintf("cat > %s << 'EOF'\n%s\nEOF", scriptPath, escapedContent)
-	if _, err := s.sshClient.RunCommand(ctx, req.Host, sshPort, uploadCmd); err != nil {
+	uploadCmd := fmt.Sprintf("cat > %s << 'EOF'\n%s\nEOF", scriptPath, templateContent)
+	if _, err := s.sshClient.RunCommand(ctx, req.Host, sshPort, req.User, req.Password, uploadCmd); err != nil {
 		return nil, fmt.Errorf("failed to upload script: %w", err)
 	}
 
 	chmodCmd := fmt.Sprintf("chmod +x %s", scriptPath)
-	if _, err := s.sshClient.RunCommand(ctx, req.Host, sshPort, chmodCmd); err != nil {
-		s.cleanupRemoteFile(ctx, req.Host, scriptPath)
+	if _, err := s.sshClient.RunCommand(ctx, req.Host, sshPort, req.User, req.Password, chmodCmd); err != nil {
+		s.cleanupRemoteFile(ctx, req.Host, scriptPath, req.User, req.Password)
 		return nil, fmt.Errorf("failed to make script executable: %w", err)
 	}
 
 	script := domain.NewScript(req.Host, req.User, req.Template, scriptPath)
 	if err := s.scriptRepo.Create(ctx, script); err != nil {
-		s.cleanupRemoteFile(ctx, req.Host, scriptPath)
+		s.cleanupRemoteFile(ctx, req.Host, scriptPath, req.User, req.Password)
 		return nil, fmt.Errorf("failed to save script to database: %w", err)
 	}
 
@@ -94,7 +96,7 @@ func (s *ScriptService) getTemplateContent(name string) (string, error) {
 	return tmpl.Content, nil
 }
 
-func (s *ScriptService) cleanupRemoteFile(ctx context.Context, host, path string) {
+func (s *ScriptService) cleanupRemoteFile(ctx context.Context, host, path, user, password string) {
 	cmd := fmt.Sprintf("rm -f %s", path)
-	s.sshClient.RunCommand(ctx, host, 22, cmd)
+	s.sshClient.RunCommand(ctx, host, 22, user, password, cmd)
 }

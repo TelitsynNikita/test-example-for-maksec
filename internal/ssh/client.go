@@ -8,38 +8,43 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+// Ограничиваем количество параллельных SSH подключений
+var sshSemaphore = make(chan struct{}, 20)
+
 type Client struct {
-	config  *ssh.ClientConfig
 	timeout time.Duration
 }
 
-type Config struct {
-	User     string
-	Password string
-	Timeout  time.Duration
-}
-
-func NewClient(cfg Config) *Client {
+func NewClient(timeout time.Duration) *Client {
 	return &Client{
-		config: &ssh.ClientConfig{
-			User: cfg.User,
-			Auth: []ssh.AuthMethod{
-				ssh.Password(cfg.Password),
-			},
-			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-			Timeout:         cfg.Timeout,
-		},
-		timeout: cfg.Timeout,
+		timeout: timeout,
 	}
 }
 
-func (c *Client) RunCommand(ctx context.Context, host string, port int, command string) (string, error) {
+func (c *Client) RunCommand(ctx context.Context, host string, port int, user, password, command string) (string, error) {
+	// Bulkhead: ограничиваем количество параллельных SSH подключений
+	select {
+	case sshSemaphore <- struct{}{}:
+		defer func() { <-sshSemaphore }()
+	case <-ctx.Done():
+		return "", ctx.Err()
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
 
+	config := &ssh.ClientConfig{
+		User: user,
+		Auth: []ssh.AuthMethod{
+			ssh.Password(password),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Timeout:         c.timeout,
+	}
+
 	addr := fmt.Sprintf("%s:%d", host, port)
 
-	conn, err := ssh.Dial("tcp", addr, c.config)
+	conn, err := ssh.Dial("tcp", addr, config)
 	if err != nil {
 		return "", fmt.Errorf("failed to dial: %w", err)
 	}

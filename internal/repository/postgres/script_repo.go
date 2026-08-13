@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/TelitsynNikita/test-example-for-maksec/internal/domain"
-	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -14,8 +13,8 @@ type ScriptRepository struct {
 	db *sqlx.DB
 }
 
-func NewScriptRepository(db *sqlx.DB) *ScriptRepository {
-	return &ScriptRepository{db: db}
+func NewScriptRepository(db *DB) *ScriptRepository {
+	return &ScriptRepository{db: db.DB}
 }
 
 func (r *ScriptRepository) Create(ctx context.Context, script *domain.Script) error {
@@ -69,43 +68,4 @@ func (r *ScriptRepository) Exists(ctx context.Context, path string) (bool, error
 	}
 
 	return exists, nil
-}
-
-func (r *ScriptRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Script, error) {
-	query := `
-		SELECT id, host, user_name, template, path, created_at, updated_at
-		FROM scripts
-		WHERE id = $1
-	`
-
-	var script domain.Script
-	err := r.db.GetContext(ctx, &script, query, id)
-	if err == sql.ErrNoRows {
-		return nil, domain.ErrScriptNotFound
-	}
-	if err != nil {
-		return nil, fmt.Errorf("failed to get script by id: %w", err)
-	}
-
-	return &script, nil
-}
-
-func (r *ScriptRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	query := `DELETE FROM scripts WHERE id = $1`
-
-	result, err := r.db.ExecContext(ctx, query, id)
-	if err != nil {
-		return fmt.Errorf("failed to delete script: %w", err)
-	}
-
-	rows, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
-	}
-
-	if rows == 0 {
-		return domain.ErrScriptNotFound
-	}
-
-	return nil
 }

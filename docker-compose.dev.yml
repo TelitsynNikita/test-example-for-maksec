@@ -23,16 +23,15 @@ services:
       - app-network
 
   app:
-    build: .
-    container_name: script-monitor-app
+    build:
+      context: .
+      target: builder  # Используем builder stage для разработки
+    container_name: script-monitor-app-dev
     environment:
-      # Server
       SERVER_CREATE_PORT: 8080
       SERVER_CALLBACK_PORT: 8081
       SERVER_READ_TIMEOUT: 10s
       SERVER_WRITE_TIMEOUT: 10s
-
-      # Database (используем имя сервиса как хост)
       DB_HOST: postgres
       DB_PORT: 5432
       DB_USER: postgres
@@ -40,20 +39,17 @@ services:
       DB_NAME: script_monitor
       DB_SSLMODE: disable
       DB_MAX_CONN: 10
-
-      # SSH
       SSH_TIMEOUT: 30s
       SSH_PORT: 22
-
-      # Callback
       CALLBACK_TOKEN: secret
-
-      # Logging
       LOG_LEVEL: info
       LOG_FORMAT: json
     ports:
       - "8080:8080"
       - "8081:8081"
+    volumes:
+      - .:/app  # Монтируем код для горячей перезагрузки
+    command: go run cmd/server/main.go
     depends_on:
       postgres:
         condition: service_healthy

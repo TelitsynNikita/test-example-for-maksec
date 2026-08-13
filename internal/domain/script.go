@@ -7,20 +7,21 @@ import (
 )
 
 type Script struct {
-	ID        uuid.UUID `json:"id"`
-	Host      string    `json:"host"`
-	User      string    `json:"user"`
-	Template  string    `json:"template"`
-	Path      string    `json:"path"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID        uuid.UUID `json:"id" db:"id"`
+	Host      string    `json:"host" db:"host"`
+	User      string    `json:"user" db:"user_name"`
+	Template  string    `json:"template" db:"template"`
+	Path      string    `json:"path" db:"path"`
+	CreatedAt time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 }
 
 type CreateScriptRequest struct {
-	Host     string `json:"host" validate:"required,hostname|ip"`
-	User     string `json:"user" validate:"required"`
-	Password string `json:"password" validate:"required"`
-	Template string `json:"template" validate:"required"`
+	Host     string `json:"host" validate:"required,hostname|ip,min=1,max=255"`
+	User     string `json:"user" validate:"required,min=1,max=100"`
+	Password string `json:"password" validate:"required,min=8,max=128"`
+	Template string `json:"template" validate:"required,min=1,max=50"`
+	Port     int    `json:"port" validate:"min=1,max=65535"`
 }
 
 type CreateScriptResponse struct {

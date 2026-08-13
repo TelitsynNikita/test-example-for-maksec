@@ -9,7 +9,11 @@ import (
 	_ "github.com/lib/pq"
 )
 
-func NewConnection(cfg config.DatabaseConfig) (*sqlx.DB, error) {
+type DB struct {
+	*sqlx.DB
+}
+
+func NewConnection(cfg config.DatabaseConfig) (*DB, error) {
 	dsn := cfg.DSN()
 
 	db, err := sqlx.Connect("postgres", dsn)
@@ -25,5 +29,5 @@ func NewConnection(cfg config.DatabaseConfig) (*sqlx.DB, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	return db, nil
+	return &DB{db}, nil
 }

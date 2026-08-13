@@ -2,8 +2,10 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
+	"github.com/TelitsynNikita/test-example-for-maksec/internal/api/response"
 	"github.com/TelitsynNikita/test-example-for-maksec/internal/domain"
 	"github.com/TelitsynNikita/test-example-for-maksec/internal/service"
 	"github.com/go-playground/validator/v10"
@@ -21,30 +23,47 @@ func NewCreateHandler(scriptService *service.ScriptService) *CreateHandler {
 	}
 }
 
+// Handle godoc
+// @Summary      Create a new script
+// @Description  Creates a new bash script on a remote host via SSH
+// @Tags         scripts
+// @Accept       json
+// @Produce      json
+// @Param        request body domain.CreateScriptRequest true "Create script request"
+// @Success      201  {object}  domain.CreateScriptResponse
+// @Failure      400  {object}  map[string]string
+// @Failure      409  {object}  map[string]string
+// @Failure      500  {object}  map[string]string
+// @Router       /create [post]
 func (h *CreateHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	var req domain.CreateScriptRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid request body")
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+
+	if err := decoder.Decode(&req); err != nil {
+		response.Error(w, http.StatusBadRequest, "Invalid request body: "+err.Error())
 		return
 	}
 
 	if err := h.validator.Struct(req); err != nil {
-		respondWithError(w, http.StatusBadRequest, err.Error())
+		response.Error(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	script, err := h.scriptService.CreateScript(r.Context(), req)
 	if err != nil {
 		status := http.StatusInternalServerError
-		switch err {
-		case domain.ErrTemplateNotFound:
+
+		switch {
+		case errors.Is(err, domain.ErrTemplateNotFound):
 			status = http.StatusBadRequest
-		case domain.ErrScriptAlreadyExists:
+		case errors.Is(err, domain.ErrScriptAlreadyExists):
 			status = http.StatusConflict
-		case domain.ErrInvalidHost, domain.ErrInvalidUser:
+		case errors.Is(err, domain.ErrInvalidHost), errors.Is(err, domain.ErrInvalidUser):
 			status = http.StatusBadRequest
 		}
-		respondWithError(w, status, err.Error())
+
+		response.Error(w, status, err.Error())
 		return
 	}
 
@@ -54,15 +73,5 @@ func (h *CreateHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		CreatedAt:  script.CreatedAt,
 	}
 
-	respondWithJSON(w, http.StatusCreated, resp)
-}
-
-func respondWithJSON(w http.ResponseWriter, status int, data interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(data)
-}
-
-func respondWithError(w http.ResponseWriter, status int, message string) {
-	respondWithJSON(w, status, map[string]string{"error": message})
+	response.JSON(w, http.StatusCreated, resp)
 }

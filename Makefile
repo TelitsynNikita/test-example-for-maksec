@@ -1,59 +1,79 @@
-# Загрузка .env
 ifneq (,$(wildcard .env))
     include .env
     export
 endif
 
-.PHONY: help build run test clean migrate-up migrate-down migrate-create migrate-force migrate-version
-
-# Переменные
-BINARY_NAME=script-monitor
-BUILD_DIR=bin
-
-# Database URL для миграций
 DB_URL=postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSLMODE)
 
-help: ## Show this help message
+.PHONY: help build run test clean docker-build docker-run docker-dev swagger
+
+BINARY_NAME=script-monitor
+BUILD_DIR=bin
+DOCKER_IMAGE=script-monitor
+
+help:
 	@echo 'Usage: make [target]'
 	@echo ''
 	@echo 'Targets:'
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-build: ## Build the application
+build:
 	@echo "Building $(BINARY_NAME)..."
 	@mkdir -p $(BUILD_DIR)
-	go build -o $(BUILD_DIR)/$(BINARY_NAME) cmd/server/main.go
+	go build -ldflags="-s -w" -o $(BUILD_DIR)/$(BINARY_NAME) cmd/server/main.go
 
-run: ## Run the application
+run:
 	@echo "Running $(BINARY_NAME)..."
 	go run cmd/server/main.go
 
-# ===== DATABASE =====
+docker-build:
+	@echo "Building Docker image..."
+	@docker build -t $(DOCKER_IMAGE):latest .
 
-db-create: ## Create database if not exists
-	@docker exec -i script-monitor-postgres psql -U postgres -c "CREATE DATABASE $(DB_NAME);" 2>/dev/null || true
-	@echo "Database ready"
+docker-run: docker-build
+	@echo "Running Docker container..."
+	@docker-compose up -d
+	@echo "Containers started"
 
-# ===== MIGRATIONS =====
+docker-stop:
+	@docker-compose down
 
-migrate-up: ## Apply all up migrations using psql
+docker-dev:
+	@echo "Running in development mode..."
+	@docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+docker-logs:
+	@docker-compose logs -f
+
+docker-clean: docker-stop
+	@docker-compose down -v
+	@docker rmi $(DOCKER_IMAGE):latest 2>/dev/null || true
+
+
+test:
+	go test -race -cover ./...
+
+test-unit:
+	go test -race -cover ./test/unit/...
+
+migrate-up:
 	@echo "Applying migrations..."
-	@for file in migrations/*.up.sql; do \
-		echo "Applying $$file..."; \
-		docker exec -i script-monitor-postgres psql -U postgres -d $(DB_NAME) < $$file; \
-	done
-	@echo "All migrations applied"
+	@migrate -path migrations -database "postgres://postgres:postgres@127.0.0.1:5438/script_monitor?sslmode=disable" up
 
-migrate-down: ## Rollback one migration
+migrate-down:
+	@echo "Current version before down:"
+	@migrate -path migrations -database "$(DB_URL)" version
 	@echo "Rolling back migration..."
 	@migrate -path migrations -database "$(DB_URL)" down 1
-
-migrate-version: ## Show current migration version
-	@echo "Current migration version:"
+	@echo "Version after down:"
 	@migrate -path migrations -database "$(DB_URL)" version
 
-migrate-create: ## Create new migration (usage: make migrate-create NAME=create_table)
-	@echo "Creating migration: $(NAME)"
-	@migrate create -ext sql -dir migrations -seq $(NAME)
+migrate-force:
+	@echo "Forcing migration version to $(VERSION)..."
+	@migrate -path migrations -database "$(DB_URL)" force $(VERSION)
+
+swagger:
+	@echo "Generating Swagger documentation..."
+	@swag init -g cmd/server/main.go -o docs
 
 .DEFAULT_GOAL := help
