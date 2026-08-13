@@ -34,9 +34,8 @@ type DatabaseConfig struct {
 }
 
 type SSHConfig struct {
-	Timeout               time.Duration `envconfig:"SSH_TIMEOUT" default:"30s"`
-	StrictHostKeyChecking bool          `envconfig:"SSH_STRICT_HOST_KEY_CHECKING" default:"false"`
-	KnownHostsFile        string        `envconfig:"SSH_KNOWN_HOSTS" default:""`
+	Timeout time.Duration `envconfig:"SSH_TIMEOUT" default:"30s"`
+	Port    int           `envconfig:"SSH_PORT" default:"22"`
 }
 
 type CallbackConfig struct {
