@@ -367,16 +367,10 @@ test-example-for-maksec/
 │   └── 20260813120500_create_events_table.down.sql
 ├── test/
 │   ├── unit/                       # Unit-тесты
-│   │   ├── service/
-│   │   │   ├── script_service_test.go
-│   │   │   └── event_service_test.go
-│   │   └── domain/
-│   │       └── template_test.go
-│   └── integration/                # Интеграционные тесты
-│       ├── postgres/
-│       │   ├── script_repo_test.go
-│       │   └── event_repo_test.go
-│       └── setup_test.go
+│       ├── service/
+│       │   ├── script_service_test.go
+│       │   └── event_service_test.go
+│       └── domain/
 ├── docs/                           # Swagger документация
 ├── .env.example                    # Пример конфигурации
 ├── .dockerignore
