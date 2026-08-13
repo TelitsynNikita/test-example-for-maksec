@@ -147,8 +147,13 @@ func initServices(repos *Repositories, cfg *config.Config) *service.Services {
 		KnownHostsFile:        cfg.SSH.KnownHostsFile,
 	})
 
+	agentConfig := service.AgentConfig{
+		CallbackURL:   cfg.Agent.CallbackURL,
+		CallbackToken: cfg.Agent.CallbackToken,
+	}
+
 	return &service.Services{
-		ScriptService: service.NewScriptService(repos.ScriptRepo, sshClient),
+		ScriptService: service.NewScriptService(repos.ScriptRepo, sshClient, agentConfig),
 		EventService:  service.NewEventService(repos.EventRepo, repos.ScriptRepo),
 	}
 }

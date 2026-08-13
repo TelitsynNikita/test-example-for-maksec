@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// MockEventRepository - мок для EventRepository
 type MockEventRepository struct {
 	mock.Mock
 }

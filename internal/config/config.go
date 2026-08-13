@@ -13,6 +13,7 @@ type Config struct {
 	Database DatabaseConfig
 	SSH      SSHConfig
 	Callback CallbackConfig
+	Agent    AgentConfig
 	Log      LogConfig
 }
 
@@ -42,6 +43,11 @@ type SSHConfig struct {
 
 type CallbackConfig struct {
 	Token string `envconfig:"CALLBACK_TOKEN" required:"true"`
+}
+
+type AgentConfig struct {
+	CallbackURL   string `envconfig:"AGENT_CALLBACK_URL" default:"http://localhost:8081/callback"`
+	CallbackToken string `envconfig:"AGENT_CALLBACK_TOKEN" default:"secret"`
 }
 
 type LogConfig struct {

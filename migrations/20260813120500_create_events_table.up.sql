@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS events (
     script_id UUID NOT NULL REFERENCES scripts(id) ON DELETE CASCADE,
     user_name TEXT NOT NULL,
     script_path TEXT NOT NULL,
-    action TEXT NOT NULL CHECK (action IN ('execute', 'modify')),
+    action TEXT NOT NULL CHECK (action IN ('open', 'execute')),
     event_time TIMESTAMPTZ NOT NULL,
     created_at TIMESTAMPTZ NOT NULL
 );

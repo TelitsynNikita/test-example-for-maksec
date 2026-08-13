@@ -44,11 +44,17 @@ func (m *MockSSHClient) RunCommand(ctx context.Context, host string, port int, u
 	return args.String(0), args.Error(1)
 }
 
+// AgentConfig для тестов
+var testAgentConfig = service.AgentConfig{
+	CallbackURL:   "http://localhost:8081/callback",
+	CallbackToken: "secret",
+}
+
 func TestScriptService_CreateScript_Success(t *testing.T) {
 	mockRepo := new(MockScriptRepository)
 	mockSSH := new(MockSSHClient)
 
-	svc := service.NewScriptService(mockRepo, mockSSH)
+	svc := service.NewScriptService(mockRepo, mockSSH, testAgentConfig)
 
 	req := domain.CreateScriptRequest{
 		Host:     "127.0.0.1",
@@ -61,7 +67,8 @@ func TestScriptService_CreateScript_Success(t *testing.T) {
 	mockRepo.On("Exists", mock.Anything, mock.Anything).Return(false, nil)
 	mockRepo.On("Create", mock.Anything, mock.Anything).Return(nil)
 
-	mockSSH.On("RunCommand", mock.Anything, "127.0.0.1", 22, "root", "password", mock.Anything).Return("", nil).Times(3)
+	// SSH: mkdir, upload, chmod, check agent, mkdir agent, upload agent, chmod agent, start agent
+	mockSSH.On("RunCommand", mock.Anything, "127.0.0.1", 22, "root", "password", mock.Anything).Return("", nil).Times(8)
 
 	script, err := svc.CreateScript(context.Background(), req)
 
@@ -79,7 +86,7 @@ func TestScriptService_CreateScript_CustomPort(t *testing.T) {
 	mockRepo := new(MockScriptRepository)
 	mockSSH := new(MockSSHClient)
 
-	svc := service.NewScriptService(mockRepo, mockSSH)
+	svc := service.NewScriptService(mockRepo, mockSSH, testAgentConfig)
 
 	req := domain.CreateScriptRequest{
 		Host:     "127.0.0.1",
@@ -92,7 +99,7 @@ func TestScriptService_CreateScript_CustomPort(t *testing.T) {
 	mockRepo.On("Exists", mock.Anything, mock.Anything).Return(false, nil)
 	mockRepo.On("Create", mock.Anything, mock.Anything).Return(nil)
 
-	mockSSH.On("RunCommand", mock.Anything, "127.0.0.1", 2222, "root", "password", mock.Anything).Return("", nil).Times(3)
+	mockSSH.On("RunCommand", mock.Anything, "127.0.0.1", 2222, "root", "password", mock.Anything).Return("", nil).Times(8)
 
 	script, err := svc.CreateScript(context.Background(), req)
 
@@ -108,7 +115,7 @@ func TestScriptService_CreateScript_ShortPassword(t *testing.T) {
 	mockRepo := new(MockScriptRepository)
 	mockSSH := new(MockSSHClient)
 
-	svc := service.NewScriptService(mockRepo, mockSSH)
+	svc := service.NewScriptService(mockRepo, mockSSH, testAgentConfig)
 
 	req := domain.CreateScriptRequest{
 		Host:     "127.0.0.1",
@@ -121,7 +128,7 @@ func TestScriptService_CreateScript_ShortPassword(t *testing.T) {
 	mockRepo.On("Exists", mock.Anything, mock.Anything).Return(false, nil)
 	mockRepo.On("Create", mock.Anything, mock.Anything).Return(nil)
 
-	mockSSH.On("RunCommand", mock.Anything, "127.0.0.1", 22, "root", "ab", mock.Anything).Return("", nil).Times(3)
+	mockSSH.On("RunCommand", mock.Anything, "127.0.0.1", 22, "root", "ab", mock.Anything).Return("", nil).Times(8)
 
 	script, err := svc.CreateScript(context.Background(), req)
 
@@ -133,7 +140,7 @@ func TestScriptService_CreateScript_EmptyPassword(t *testing.T) {
 	mockRepo := new(MockScriptRepository)
 	mockSSH := new(MockSSHClient)
 
-	svc := service.NewScriptService(mockRepo, mockSSH)
+	svc := service.NewScriptService(mockRepo, mockSSH, testAgentConfig)
 
 	req := domain.CreateScriptRequest{
 		Host:     "127.0.0.1",
@@ -154,7 +161,7 @@ func TestScriptService_CreateScript_TemplateNotFound(t *testing.T) {
 	mockRepo := new(MockScriptRepository)
 	mockSSH := new(MockSSHClient)
 
-	svc := service.NewScriptService(mockRepo, mockSSH)
+	svc := service.NewScriptService(mockRepo, mockSSH, testAgentConfig)
 
 	req := domain.CreateScriptRequest{
 		Host:     "127.0.0.1",
@@ -175,7 +182,7 @@ func TestScriptService_CreateScript_AlreadyExists(t *testing.T) {
 	mockRepo := new(MockScriptRepository)
 	mockSSH := new(MockSSHClient)
 
-	svc := service.NewScriptService(mockRepo, mockSSH)
+	svc := service.NewScriptService(mockRepo, mockSSH, testAgentConfig)
 
 	req := domain.CreateScriptRequest{
 		Host:     "127.0.0.1",
@@ -198,7 +205,7 @@ func TestScriptService_CreateScript_SSHFailure(t *testing.T) {
 	mockRepo := new(MockScriptRepository)
 	mockSSH := new(MockSSHClient)
 
-	svc := service.NewScriptService(mockRepo, mockSSH)
+	svc := service.NewScriptService(mockRepo, mockSSH, testAgentConfig)
 
 	req := domain.CreateScriptRequest{
 		Host:     "127.0.0.1",
@@ -226,7 +233,7 @@ func TestScriptService_CreateScript_DBFailure_Cleanup(t *testing.T) {
 	mockRepo := new(MockScriptRepository)
 	mockSSH := new(MockSSHClient)
 
-	svc := service.NewScriptService(mockRepo, mockSSH)
+	svc := service.NewScriptService(mockRepo, mockSSH, testAgentConfig)
 
 	req := domain.CreateScriptRequest{
 		Host:     "127.0.0.1",
@@ -239,7 +246,9 @@ func TestScriptService_CreateScript_DBFailure_Cleanup(t *testing.T) {
 	mockRepo.On("Exists", mock.Anything, mock.Anything).Return(false, nil)
 	mockRepo.On("Create", mock.Anything, mock.Anything).Return(errors.New("db error"))
 
-	mockSSH.On("RunCommand", mock.Anything, "127.0.0.1", 2222, "root", "password", mock.Anything).Return("", nil).Times(3)
+	// SSH: mkdir, upload, chmod, check agent, mkdir agent, upload agent, chmod agent, start agent
+	mockSSH.On("RunCommand", mock.Anything, "127.0.0.1", 2222, "root", "password", mock.Anything).Return("", nil).Times(8)
+	// Ожидаем cleanup с правильным портом 2222
 	mockSSH.On("RunCommand", mock.Anything, "127.0.0.1", 2222, "root", "password", mock.Anything).Return("", nil).Times(1)
 
 	script, err := svc.CreateScript(context.Background(), req)
